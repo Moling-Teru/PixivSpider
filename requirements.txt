@@ -1,2 +1,4 @@
 Requests==2.32.5
+Requests_cache==1.2.1
 typing~=3.7
+moviepy~=2.2
