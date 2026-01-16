@@ -88,7 +88,7 @@ def try_resolve_pic_info(json_data: Dict) -> Iterator[Tuple[int, str, str, int, 
             url:str = post["url"]
             title:str = post["alt"]
             pageCount:int = post["pageCount"]
-            ifGif:bool = True if "动图" in post["tags"] else False
+            ifGif:bool = True if "动图" in title else False
             print(f"[INFO] 解析到图片 - ID:{id} 页数:{pageCount}")
             yield (id, url, title, pageCount, ifGif)
         

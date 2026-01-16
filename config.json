@@ -1,5 +1,6 @@
 {
-    "tag":"魈",
-    "max_page":"test2",
-    "dest_folder":"pic_folder"
+    "tag":"寄生虫",
+    "page":"1",
+    "max_pictures_per_post":"2",
+    "dest_folder":"Pixiv_Picture"
 }

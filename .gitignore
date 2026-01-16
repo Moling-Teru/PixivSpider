@@ -1,4 +1,6 @@
 test/
 pic/
 pic_folder/
+Pixiv_Picture/
 __pycache__/
+gif.json
