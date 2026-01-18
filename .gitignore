@@ -1,6 +1,11 @@
+# Folders
 test/
 pic/
 pic_folder/
 Pixiv_Picture/
 __pycache__/
+
+# Files
 gif.json
+cookies.json
+json/cookies.json

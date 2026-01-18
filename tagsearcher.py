@@ -3,10 +3,11 @@ from urllib.parse import quote, unquote
 import json
 from typing import Dict, Tuple, Optional, Generator, Iterator
 import time
+import cookie
 
 def read_config(*args) -> Tuple | Dict | str:
 
-    with open('config.json', 'r', encoding='utf-8') as f:
+    with open('json/config.json', 'r', encoding='utf-8') as f:
         config:dict = json.load(f)
 
     content = []
@@ -20,7 +21,7 @@ def read_config(*args) -> Tuple | Dict | str:
     else:
         return config.get(args[0], "")
 
-def try_get_tagsearch(page: int = 1) -> Dict: #转投网页端API的大手
+def try_get_tagsearch(page: int = 1, useCookie = False) -> Dict: #转投网页端API的大手
 
     tag:str = read_config("tag")
     tag = quote(tag)
@@ -48,8 +49,9 @@ def try_get_tagsearch(page: int = 1) -> Dict: #转投网页端API的大手
         "type": "all",
         "lang": "zh"
     }
+    cookies = cookie.request_cookies() if useCookie else None
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=15)
+        response = requests.get(url, headers=headers, params=params, cookies=cookies, timeout=15)
     except requests.RequestException as e:
         print(f"[ERROR] 请求失败: {e}")
         return {}
@@ -76,6 +78,10 @@ def try_resolve_pic_info(json_data: Dict) -> Iterator[Tuple[int, str, str, int, 
     if json_data.get("error", True):
         raise requests.exceptions.InvalidJSONError("API返回错误。") #最终失败
     
+    # 新增帖子数量显示
+    # body/illustManga/total
+    print(f"[INFO] 总帖子数量: {json_data.get('body', {}).get('illustManga', {}).get('total', '未知')}")
+
     # Part.2 解析图片URL-数据
     try: #/body/illustManga/data
         post_list:list = json_data["body"]["illustManga"]["data"]

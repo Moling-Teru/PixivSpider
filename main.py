@@ -1,14 +1,18 @@
 import picgetter
 import tagsearcher
+import cookie
 import json
 from typing import Any, Optional, Iterator
 import datetime
 import zipfile
 import os
 import tempfile
+import asyncio
+
+use_cookie = False
 
 def read_config(arg) -> str:
-    with open('config.json', 'r', encoding='utf-8') as f:
+    with open('json/config.json', 'r', encoding='utf-8') as f:
         config:dict = json.load(f)
     
     return config.get(arg, "")
@@ -22,6 +26,22 @@ def create_folder(folder_name: str) -> str:
     else:
         print(f"[INFO] 文件夹已存在: {folder_name}")
     return folder_name
+
+def cookie_check():
+    global use_cookie
+    t = input("是否检查登录有效性？不登录可能导致部分图片无法获取。(y/n): ")
+    if t.lower() == 'y':
+        use_cookie = True
+        try:
+            cookie.check_verification()
+        except cookie.CookieException as e:
+            print(f"[ERROR] Cookie验证失败: {e}")
+            cookie.main() # 已经在Cookie.main中处理了重试机制
+    elif t.lower() == 'n':
+        print("跳过登录有效性检查。")
+        use_cookie = False
+    else:
+        cookie_check()
 
 
 def zip_gif_to_video(data: Any, dest_path: str, idx: int) -> None:
@@ -52,6 +72,10 @@ def zip_gif_to_video(data: Any, dest_path: str, idx: int) -> None:
         print(f"[INFO] 生成视频文件: {output_path}")
 
 if __name__ == "__main__":
+    # Cookie会影响部分图片的获取，已经加入Cookie支持
+    # 最核心的Cookie为PHPSESSID
+    cookie_check()
+    cookie.clear_useless_cookies()
     dest_folder = create_folder(read_config("dest_folder")) if read_config("dest_folder") != "" else "pic" #最外层文件夹
     folder_path = create_folder(f"{dest_folder}/{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}") #按时间创建子文件夹
 
@@ -67,17 +91,19 @@ if __name__ == "__main__":
     page = check_int(page, 1)
     max_page = check_int(max_page, 2)
 
-    json_info = tagsearcher.try_get_tagsearch(page=page)
+    json_info = tagsearcher.try_get_tagsearch(page=page, useCookie=use_cookie)
     pic_info: Iterator = tagsearcher.try_resolve_pic_info(json_info)
     url_generator = picgetter.try_get_url_combine(pic_info, max_per_post=max_page)
-    content = picgetter.try_get_pic_origin_url(url_generator)
-
-    for idx,data in enumerate(content):
-        if data[1][0]:  # ifGif
-            zip_gif_to_video(data, folder_path, idx)
-        else:
-            with open(f"{folder_path}/image_{idx}_{data[2]}{data[1][1]}", "wb") as f:
-                f.write(data[0])
-                print(f"[INFO] 保存图片文件: {folder_path}/image_{idx}_{data[2]}{data[1][1]}")
-
-
+    
+    async def process_and_save():
+        idx = 0
+        async for data in picgetter.try_get_pic_origin_url_async(url_generator, max_concurrent=5):
+            if data[1][0]:  # ifGif
+                zip_gif_to_video(data, folder_path, idx)
+            else:
+                with open(f"{folder_path}/image_{idx}_{data[2]}{data[1][1]}", "wb") as f:
+                    f.write(data[0])
+                    print(f"[INFO] 保存图片文件: {folder_path}/image_{idx}_{data[2]}{data[1][1]}")
+            idx += 1
+    
+    asyncio.run(process_and_save())
